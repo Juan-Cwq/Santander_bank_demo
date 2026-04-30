@@ -4,7 +4,7 @@ import { supabase, type Profile } from './lib/supabase'
 import type { User } from '@supabase/supabase-js'
 import './index.css'
 
-type View = 'landing' | 'signup' | 'login' | 'dashboard' | 'transfer'
+type View = 'landing' | 'signup' | 'login' | 'dashboard' | 'transfer' | 'profile'
 type AuthStep = 'welcome' | 'biometric' | 'sms-send' | 'sms-verify' | 'success'
 
 function App() {
@@ -28,6 +28,13 @@ function App() {
   const [transferRecipient, setTransferRecipient] = useState('')
   const [transferSuccess, setTransferSuccess] = useState(false)
   const [balance, setBalance] = useState(24831.50)
+  
+  // Profile editing state
+  const [editName, setEditName] = useState('')
+  const [editPhone, setEditPhone] = useState('')
+  const [editEmail, setEditEmail] = useState('')
+  const [profilePicture, setProfilePicture] = useState<string | null>(null)
+  const [profileSaved, setProfileSaved] = useState(false)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -486,6 +493,266 @@ function App() {
     )
   }
 
+  // Profile View
+  if (view === 'profile' && user) {
+    const handleProfilePictureChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0]
+      if (file) {
+        const reader = new FileReader()
+        reader.onloadend = () => {
+          setProfilePicture(reader.result as string)
+        }
+        reader.readAsDataURL(file)
+      }
+    }
+
+    const handleSaveProfile = async () => {
+      setIsLoading(true)
+      setError('')
+      
+      // Update profile in Supabase
+      const updates: Record<string, string> = {}
+      if (editName) updates.full_name = editName
+      if (editPhone) updates.phone = editPhone
+      
+      if (Object.keys(updates).length > 0 || editEmail) {
+        const { error: updateError } = await supabase
+          .from('profiles')
+          .update(updates)
+          .eq('id', user.id)
+        
+        if (updateError) {
+          setError('Failed to update profile')
+          setIsLoading(false)
+          return
+        }
+        
+        // Update local profile state
+        if (profile) {
+          setProfile({
+            ...profile,
+            full_name: editName || profile.full_name,
+            phone: editPhone || profile.phone,
+          })
+        }
+      }
+      
+      setIsLoading(false)
+      setProfileSaved(true)
+      setTimeout(() => setProfileSaved(false), 3000)
+    }
+
+    const initials = (profile?.full_name || editName || user.email || 'U')
+      .split(' ')
+      .map(n => n[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2)
+
+    return (
+      <div className="min-h-screen bg-cream">
+        <header className="bg-white border-b border-gray-100">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between h-16 md:h-20">
+              <button 
+                onClick={() => { setView('dashboard'); setError(''); setProfileSaved(false); }}
+                className="flex items-center gap-2 text-charcoal hover:text-santander-red transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                </svg>
+                Back
+              </button>
+              <Logo />
+              <div className="w-16" />
+            </div>
+          </div>
+        </header>
+
+        <main className="max-w-lg mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-center mb-8"
+          >
+            <h1 className="font-serif text-3xl text-near-black mb-2">Your Profile</h1>
+            <p className="text-lg text-charcoal/70">Manage your account information</p>
+          </motion.div>
+
+          {/* Profile Picture */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="flex flex-col items-center mb-8"
+          >
+            <div className="relative group">
+              <div className="w-32 h-32 rounded-full overflow-hidden bg-gradient-to-br from-santander-red to-santander-light flex items-center justify-center shadow-lg">
+                {profilePicture ? (
+                  <img src={profilePicture} alt="Profile" className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-4xl font-bold text-white">{initials}</span>
+                )}
+              </div>
+              <label className="absolute inset-0 rounded-full bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center cursor-pointer transition-opacity">
+                <span className="text-white text-sm font-medium">Change Photo</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleProfilePictureChange}
+                  className="hidden"
+                />
+              </label>
+              <div className="absolute -bottom-1 -right-1 w-10 h-10 rounded-full bg-white border-2 border-cream flex items-center justify-center shadow">
+                <CameraIcon className="w-5 h-5 text-santander-red" />
+              </div>
+            </div>
+            <p className="mt-4 text-sm text-charcoal/60">Tap to change your profile picture</p>
+          </motion.div>
+
+          {/* Profile Form */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="bg-white rounded-2xl p-6 shadow-sm border border-charcoal/10 space-y-5"
+          >
+            <div>
+              <label className="block text-sm font-medium text-charcoal/70 mb-2">Full Name</label>
+              <input
+                type="text"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                placeholder={profile?.full_name || 'Enter your name'}
+                className="w-full py-4 px-5 text-lg bg-cream border-2 border-charcoal/20 rounded-xl focus:outline-none focus:border-santander-red focus:ring-4 focus:ring-santander-red/20 transition-all"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-charcoal/70 mb-2">Email Address</label>
+              <input
+                type="email"
+                value={editEmail || user.email || ''}
+                onChange={(e) => setEditEmail(e.target.value)}
+                placeholder="your@email.com"
+                className="w-full py-4 px-5 text-lg bg-cream border-2 border-charcoal/20 rounded-xl focus:outline-none focus:border-santander-red focus:ring-4 focus:ring-santander-red/20 transition-all"
+                disabled
+              />
+              <p className="mt-1 text-xs text-charcoal/50">Email cannot be changed</p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-charcoal/70 mb-2">Phone Number</label>
+              <input
+                type="tel"
+                value={editPhone}
+                onChange={(e) => setEditPhone(e.target.value.replace(/\D/g, ''))}
+                placeholder={profile?.phone || 'Enter phone number'}
+                className="w-full py-4 px-5 text-lg bg-cream border-2 border-charcoal/20 rounded-xl focus:outline-none focus:border-santander-red focus:ring-4 focus:ring-santander-red/20 transition-all"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-charcoal/70 mb-2">Preferred Sign-in Method</label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={() => {
+                    if (profile) setProfile({ ...profile, preferred_auth_method: 'sms' })
+                  }}
+                  className={`py-3 px-4 rounded-xl border-2 font-medium transition-all flex items-center justify-center gap-2 ${
+                    profile?.preferred_auth_method === 'sms'
+                      ? 'border-santander-red bg-santander-red/5 text-santander-red'
+                      : 'border-charcoal/20 text-charcoal hover:border-charcoal/40'
+                  }`}
+                >
+                  <PhoneIcon /> SMS Code
+                </button>
+                <button
+                  onClick={() => {
+                    if (profile) setProfile({ ...profile, preferred_auth_method: 'biometric' })
+                  }}
+                  className={`py-3 px-4 rounded-xl border-2 font-medium transition-all flex items-center justify-center gap-2 ${
+                    profile?.preferred_auth_method === 'biometric'
+                      ? 'border-santander-red bg-santander-red/5 text-santander-red'
+                      : 'border-charcoal/20 text-charcoal hover:border-charcoal/40'
+                  }`}
+                >
+                  <FaceIcon className="w-5 h-5" /> Face ID
+                </button>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Account Info */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="bg-white rounded-2xl p-6 shadow-sm border border-charcoal/10 mt-6"
+          >
+            <h3 className="text-lg font-semibold text-near-black mb-4">Account Information</h3>
+            <div className="space-y-3">
+              <div className="flex justify-between py-2 border-b border-charcoal/10">
+                <span className="text-charcoal/60">Account Type</span>
+                <span className="font-medium text-near-black">High Yield Savings</span>
+              </div>
+              <div className="flex justify-between py-2 border-b border-charcoal/10">
+                <span className="text-charcoal/60">Account Number</span>
+                <span className="font-medium text-near-black">****4521</span>
+              </div>
+              <div className="flex justify-between py-2 border-b border-charcoal/10">
+                <span className="text-charcoal/60">Routing Number</span>
+                <span className="font-medium text-near-black">021000021</span>
+              </div>
+              <div className="flex justify-between py-2">
+                <span className="text-charcoal/60">Member Since</span>
+                <span className="font-medium text-near-black">
+                  {new Date(profile?.created_at || Date.now()).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                </span>
+              </div>
+            </div>
+          </motion.div>
+
+          {error && (
+            <motion.p
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mt-4 text-santander-red text-base font-medium text-center"
+            >
+              {error}
+            </motion.p>
+          )}
+
+          {profileSaved && (
+            <motion.p
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mt-4 text-success text-base font-medium text-center flex items-center justify-center gap-2"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+              Profile saved successfully!
+            </motion.p>
+          )}
+
+          <motion.button
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+            whileHover={{ scale: 1.02, boxShadow: '0 8px 30px rgba(224, 0, 0, 0.3)' }}
+            whileTap={{ scale: 0.98 }}
+            onClick={handleSaveProfile}
+            disabled={isLoading}
+            className="w-full mt-6 py-5 px-8 bg-gradient-to-r from-santander-red to-santander-light text-white text-xl font-semibold rounded-2xl shadow-lg transition-all flex items-center justify-center gap-3 disabled:opacity-50"
+          >
+            {isLoading ? <LoadingSpinner /> : 'Save Changes'}
+          </motion.button>
+        </main>
+      </div>
+    )
+  }
+
   // Dashboard View
   if (view === 'dashboard' && user) {
     return (
@@ -495,9 +762,30 @@ function App() {
             <div className="flex items-center justify-between h-16 md:h-20">
               <Logo />
               <div className="flex items-center gap-4">
-                <span className="text-charcoal hidden sm:block">
-                  Welcome, {profile?.full_name || user.email}
-                </span>
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => {
+                    setEditName(profile?.full_name || '')
+                    setEditPhone(profile?.phone || '')
+                    setEditEmail(user.email || '')
+                    setView('profile')
+                  }}
+                  className="flex items-center gap-3 px-3 py-2 rounded-full hover:bg-cream transition-colors"
+                >
+                  <div className="w-10 h-10 rounded-full overflow-hidden bg-gradient-to-br from-santander-red to-santander-light flex items-center justify-center">
+                    {profilePicture ? (
+                      <img src={profilePicture} alt="Profile" className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="text-sm font-bold text-white">
+                        {(profile?.full_name || user.email || 'U').split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-charcoal hidden sm:block font-medium">
+                    {profile?.full_name?.split(' ')[0] || 'Profile'}
+                  </span>
+                </motion.button>
                 <motion.button
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
@@ -1420,6 +1708,15 @@ function MenuIcon() {
   return (
     <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+    </svg>
+  )
+}
+
+function CameraIcon({ className = "w-6 h-6" }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zM18.75 10.5h.008v.008h-.008V10.5z" />
     </svg>
   )
 }
