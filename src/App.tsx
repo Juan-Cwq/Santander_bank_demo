@@ -4,7 +4,7 @@ import { supabase, type Profile } from './lib/supabase'
 import type { User } from '@supabase/supabase-js'
 import './index.css'
 
-type View = 'landing' | 'signup' | 'login' | 'dashboard' | 'transfer' | 'profile'
+type View = 'landing' | 'signup' | 'login' | 'dashboard' | 'transfer' | 'profile' | 'transfers-history'
 type AuthStep = 'welcome' | 'biometric' | 'sms-send' | 'sms-verify' | 'success'
 
 function App() {
@@ -493,6 +493,134 @@ function App() {
     )
   }
 
+  // Mock transfer history data
+  const transferHistory = [
+    { id: '1', recipient: 'Eleanor Pendelton', amount: 500.00, date: '2026-04-28', type: 'outgoing', status: 'completed' },
+    { id: '2', recipient: 'Michael Pendelton', amount: 1200.00, date: '2026-04-25', type: 'outgoing', status: 'completed' },
+    { id: '3', recipient: 'External Savings', amount: 2000.00, date: '2026-04-20', type: 'outgoing', status: 'completed' },
+    { id: '4', recipient: 'Sarah Pendelton', amount: 150.00, date: '2026-04-18', type: 'outgoing', status: 'completed' },
+    { id: '5', recipient: 'Eleanor Pendelton', amount: 300.00, date: '2026-04-15', type: 'outgoing', status: 'completed' },
+    { id: '6', recipient: 'External Savings', amount: 5000.00, date: '2026-04-10', type: 'outgoing', status: 'completed' },
+    { id: '7', recipient: 'Michael Pendelton', amount: 250.00, date: '2026-04-05', type: 'outgoing', status: 'completed' },
+    { id: '8', recipient: 'Sarah Pendelton', amount: 75.00, date: '2026-04-01', type: 'outgoing', status: 'completed' },
+  ]
+
+  // Transfers History View
+  if (view === 'transfers-history' && user) {
+    return (
+      <div className="min-h-screen bg-cream">
+        <header className="bg-white border-b border-gray-100">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between h-16 md:h-20">
+              <button 
+                onClick={() => setView('dashboard')}
+                className="flex items-center gap-2 text-charcoal hover:text-santander-red transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                </svg>
+                Back
+              </button>
+              <Logo />
+              <div className="w-16" />
+            </div>
+          </div>
+        </header>
+
+        <main className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-8"
+          >
+            <h1 className="font-serif text-3xl text-near-black mb-2">Transfer History</h1>
+            <p className="text-lg text-charcoal/70">Your recent transfers</p>
+          </motion.div>
+
+          {/* Summary Card */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="bg-white rounded-2xl p-6 shadow-sm border border-charcoal/10 mb-6"
+          >
+            <div className="grid grid-cols-2 gap-6">
+              <div>
+                <p className="text-sm text-charcoal/60 mb-1">Total Transferred (This Month)</p>
+                <p className="text-2xl font-bold text-near-black">$9,475.00</p>
+              </div>
+              <div>
+                <p className="text-sm text-charcoal/60 mb-1">Number of Transfers</p>
+                <p className="text-2xl font-bold text-near-black">8</p>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Transfer List */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="bg-white rounded-2xl shadow-sm border border-charcoal/10 overflow-hidden"
+          >
+            <div className="divide-y divide-charcoal/10">
+              {transferHistory.map((transfer, index) => (
+                <motion.div
+                  key={transfer.id}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.1 + index * 0.05 }}
+                  className="p-5 hover:bg-cream/50 transition-colors"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-full bg-santander-red/10 flex items-center justify-center text-santander-red">
+                        <SendIcon />
+                      </div>
+                      <div>
+                        <p className="font-medium text-near-black text-lg">{transfer.recipient}</p>
+                        <p className="text-sm text-charcoal/60">
+                          {new Date(transfer.date).toLocaleDateString('en-US', { 
+                            month: 'short', 
+                            day: 'numeric',
+                            year: 'numeric'
+                          })}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-semibold text-near-black text-lg">
+                        -${transfer.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                      </p>
+                      <p className="text-sm text-success flex items-center justify-end gap-1">
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                        Completed
+                      </p>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </motion.div>
+
+          <motion.button
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+            whileHover={{ scale: 1.02, boxShadow: '0 8px 30px rgba(224, 0, 0, 0.3)' }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => setView('transfer')}
+            className="w-full mt-6 py-5 px-8 bg-gradient-to-r from-santander-red to-santander-light text-white text-xl font-semibold rounded-2xl shadow-lg transition-all flex items-center justify-center gap-3"
+          >
+            <SendIcon /> New Transfer
+          </motion.button>
+        </main>
+      </div>
+    )
+  }
+
   // Profile View
   if (view === 'profile' && user) {
     const handleProfilePictureChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -842,7 +970,7 @@ function App() {
             transition={{ delay: 0.2 }}
             className="grid sm:grid-cols-2 gap-4 mb-8"
           >
-            <QuickActionLarge icon={<WalletIcon />} label="View Balance" description="Check all accounts" onClick={() => {}} />
+            <QuickActionLarge icon={<HistoryIcon />} label="View Transfers" description="Transfer history" onClick={() => setView('transfers-history')} />
             <QuickActionLarge icon={<SendIcon />} label="Transfer Money" description="Send to anyone" onClick={() => setView('transfer')} />
           </motion.div>
 
@@ -1717,6 +1845,14 @@ function CameraIcon({ className = "w-6 h-6" }: { className?: string }) {
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
       <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zM18.75 10.5h.008v.008h-.008V10.5z" />
+    </svg>
+  )
+}
+
+function HistoryIcon() {
+  return (
+    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
     </svg>
   )
 }
