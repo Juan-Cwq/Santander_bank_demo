@@ -72,6 +72,16 @@ function App() {
     exit: { opacity: 0, y: -20 },
   }
 
+  const passwordRequirements = [
+    { label: 'At least 12 characters long', test: (p: string) => p.length >= 12 },
+    { label: 'At least 1 uppercase letter (A-Z)', test: (p: string) => /[A-Z]/.test(p) },
+    { label: 'At least 1 lowercase letter (a-z)', test: (p: string) => /[a-z]/.test(p) },
+    { label: 'At least 1 special character (e.g., !@#$%)', test: (p: string) => /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(p) },
+    { label: 'At least 1 number (0-9)', test: (p: string) => /[0-9]/.test(p) },
+  ]
+
+  const isPasswordValid = passwordRequirements.every(req => req.test(password))
+
   const handleSignUp = async () => {
     if (!email || !password || !fullName || !phone) {
       setError('Please fill in all fields')
@@ -81,8 +91,8 @@ function App() {
       setError('Please enter a valid phone number')
       return
     }
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters')
+    if (!isPasswordValid) {
+      setError('Please meet all password requirements')
       return
     }
     
@@ -1059,6 +1069,38 @@ function App() {
                 placeholder="Create password"
                 className="w-full py-4 px-6 text-lg bg-white border-2 border-charcoal/20 rounded-xl focus:outline-none focus:border-santander-red focus:ring-4 focus:ring-santander-red/20 transition-all"
               />
+              
+              {/* Password Requirements */}
+              {password.length > 0 && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  className="mt-3 p-4 bg-cream rounded-xl"
+                >
+                  <p className="text-sm font-medium text-charcoal mb-2">Password requirements:</p>
+                  <ul className="space-y-1.5">
+                    {passwordRequirements.map((req, index) => {
+                      const isMet = req.test(password)
+                      return (
+                        <li key={index} className="flex items-center gap-2 text-sm">
+                          {isMet ? (
+                            <svg className="w-4 h-4 text-success flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                            </svg>
+                          ) : (
+                            <svg className="w-4 h-4 text-charcoal/40 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <circle cx="12" cy="12" r="9" />
+                            </svg>
+                          )}
+                          <span className={isMet ? 'text-success' : 'text-charcoal/60'}>
+                            {req.label}
+                          </span>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                </motion.div>
+              )}
             </div>
 
             {error && (
